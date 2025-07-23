@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Safe route prediction for women</title>
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+  <!-- meta tag used to view port as length as website -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.10/semantic.min.css">
+  <!-- to import required buttons ans colours from css -->
+  <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="apple-touch-icon" sizes="180x180" href="public\images\apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="public\images\favicon-32x32.png">
+  <link rel="icson" type="image/png" sizes="16x16" href="public\images\favicon-16x16.png">
+  <link rel="manifest" href="public\images\site.webmanifest">
+  <script src="//code.jquery.com/jquery-3.4.1.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <meta charset="utf-8">
+  <style>
+    /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+    #map {
+      height: 75%;
+    }
+
+    /* Optional: Makes the sample page fill the window. */
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background-color: black;
+    }
+    /* giving the backgrond colour as black */
+    .controls {
+      margin-top: 10px;
+      border: 1px solid transparent;
+      border-radius: 2px 0 0 2px;
+      box-sizing: border-box;
+      -moz-box-sizing: border-box;
+      height: 32px;
+      outline: none;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+    /* giving margins and border */
+
+    #origin-input,
+    #destination-input {
+      color: white;
+      background-color: black;
+      font-family: monospace;
+      font-size: 15px;
+      font-weight: 300;
+      margin-left: 12px;
+      padding: 0 11px 0 13px;
+      text-overflow: ellipsis;
+      width: 200px;
+
+    }
+    /* giving origin destination colour and texts */
+
+    #origin-input:focus,
+    #destination-input:focus {
+      border-color: black;
+    }
+
+    #mode-selector {
+      color: #fff;
+      background-color: black;
+      margin-left: 12px;
+      padding: 5px 11px 0px 11px;
+    }
+
+    #mode-selector label {
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: 300;
+    }
+
+    li {
+      font-family: monospace;
+    }
+  </style>
+</head>
+
+<body>
+  <header class="text-white-600 body-font bg-blue-500">
+    <!-- header color to blue -->
+    <div class="container mx-auto flex flex-wrap p-5 flex-col md:flex-row items-center">
+      <!-- to place items at center -->
+      <a class="flex title-font font-medium items-center text-gray-900 mb-4 md:mb-0">
+        <!-- <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round"
+          stroke-linejoin="round" stroke-width="2" class="w-10 h-10 text-white p-2 bg-pink-500 rounded-full"
+          viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+        </svg> -->
+        <span class="ml-3 text-xl text-white font-mono">Safe route prediction for women</span>
+      </a>
+      <a class="mr-5 hover:text-white text-white"></a>
+      <h1 id="myLat" class="text-white font-bold font-mono">Latitude: </h1>
+      <a class="mr-5 hover:text-white text-white"></a>
+      <h1 id="myLong" class="text-white font-bold font-mono">Longitude: </h1>
+      <a class="mr-5 hover:text-white text-white"></a>
+      <nav class="md:ml-auto flex flex-wrap items-center text-base justify-center">
+        <!-- <a class="mr-5 hover:text-white text-white">Home</a> -->
+        <a class="mr-5 hover:text-white text-white"></a>
+        <a class="mr-5 hover:text-white text-white">Dangerous Score</a>
+        <a class="mr-5 hover:text-white text-white">0 😁</a>
+        <a class="mr-5 hover:text-white text-white">5 😰</a>
+        <a class="mr-5 hover:text-white text-white"></a>
+      </nav>
+    </div>
+  </header>
+  <!-- the above contains titile lat long etc -->
+
+  
+  <input id="origin-input" class="controls" type="text" placeholder="Enter an origin location">
+<!-- to enter orogin loc -->
+  <input id="destination-input" class="controls" type="text" placeholder="Enter a destination location">
+<!-- to enter destination -->
+  <div id="mode-selector" class="controls"><!-- div tag to select mode of travelling -->
+    <input type="radio" name="type" id="changemode-walking" checked="checked">
+    <label for="changemode-walking">Walking</label>
+
+     <input type="radio" name="type" id="changemode-transit">
+    <label for="changemode-transit">Transit</label> 
+
+    <input type="radio" name="type" id="changemode-driving">
+    <label for="changemode-driving">Driving</label>
+  </div>
+
+  <div id="map" class="ui container"></div>
+  <div class="ui container">
+  </div>
+  <script async defer 
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyABczXW2KC7OZzTmWSa_P648pvZ-JWCFT8&libraries=places"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+  <div
+    class="flex-shrink-0 w-6 h-6 rounded-full mt-10 sm:mt-0 inline-flex items-left justify-left bg-pink-500 text-white relative z-10 title-font font-medium text-sm">
+    1</div>
+
+  <script>
+    // to load google maps using the key
+    // result of python code is stored in data variable
+    var data =[{'lati': 78.4746, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.3616}, {'lati': 78.3908, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.4486}, {'lati': 78.5034, 'type': 'Feature', 'properties': {'mag': 0}, 'longi': 17.3004}, {'lati': 78.5316, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.3685}, {'lati': 78.5613, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.3141}, {'lati': 78.5487, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.2739}, {'lati': 78.4627, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.3993}, {'lati': 78.4546, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.4182}, {'lati': 78.4794, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.3858}, {'lati': 78.491, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.3716}, {'lati': 78.5083, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.3472}, {'lati': 78.5067, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.341}, {'lati': 78.3489, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.4401}, {'lati': 78.486, 'type': 'Feature', 'properties': {'mag': 0}, 'longi': 17.3799}, {'lati': 78.4844, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.3893}, {'lati': 78.4933, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.3901}, {'lati': 78.5112, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.3574}, {'lati': 78.5183, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.3444}, {'lati': 78.3943, 'type': 'Feature', 'properties': {'mag': 0}, 'longi': 17.363}, {'lati': 78.5583, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.3984}, {'lati': 78.5695, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.3715}, {'lati': 78.5522, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.3457}, {'lati': 78.4327, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.3225}, {'lati': 78.4285, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.3667}, {'lati': 78.4312, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.3958}, {'lati': 78.4664, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.4447}, {'lati': 78.4482, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.4375}, {'lati': 78.5665, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.2945}, {'lati': 78.5416, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.4301}, {'lati': 78.5609, 'type': 'Feature', 'properties': {'mag': 0}, 'longi': 17.4629}, {'lati': 78.5968, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.4695}, {'lati': 78.473, 'type': 'Feature', 'properties': {'mag': 4}, 'longi': 17.393}, {'lati': 78.4496, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.5162}, {'lati': 78.3953, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.4875}, {'lati': 78.4983, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.4399}, {'lati': 78.3772, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.4435}, {'lati': 78.5438, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.4066}, {'lati': 78.4702, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.3739}, {'lati': 78.4071, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.4326}, {'lati': 78.4639, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.3861}, {'lati': 78.5163, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.392}, {'lati': 78.3855, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.5513}, {'lati': 78.4023, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.322}, {'lati': 78.4704, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.3748}, {'lati': 78.494, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.3757}, {'lati': 78.4743, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.3051}, {'lati': 78.5754, 'type': 'Feature', 'properties': {'mag': 4}, 'longi': 17.3317}, {'lati': 78.4252, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.4559}, {'lati': 78.6053, 'type': 'Feature', 'properties': {'mag': 0}, 'longi': 17.3271}, {'lati': 78.4699, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.3324}, {'lati': 78.4114, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.416}, {'lati': 78.4915, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.4161}, {'lati': 78.5253, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.3053}, {'lati': 78.4011, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.3833}, {'lati': 78.5352, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.5472}, {'lati': 78.5513, 'type': 'Feature', 'properties': {'mag': 0}, 'longi': 17.3168}, {'lati': 78.484, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.4021}, {'lati': 78.3852, 'type': 'Feature', 'properties': {'mag': 0}, 'longi': 17.5011}, {'lati': 78.4867, 'type': 'Feature', 'properties': {'mag': 0}, 'longi': 17.385}, {'lati': 78.5236, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.3397}, {'lati': 78.5363, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.3374}, {'lati': 78.5298, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.3318}, {'lati': 78.5316, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.3413}, {'lati': 78.528, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.3228}, {'lati': 78.4652, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.4106}, {'lati': 78.5363, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.3125}, {'lati': 78.4845, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.5366}, {'lati': 78.3578, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.4699}, {'lati': 78.5476, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.373}, {'lati': 78.3871, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.4834}, {'lati': 78.4387, 'type': 'Feature', 'properties': {'mag': 0}, 'longi': 17.4169}, {'lati': 78.4505, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.4254}, {'lati': 78.4208, 'type': 'Feature', 'properties': {'mag': 0}, 'longi': 17.3782}, {'lati': 78.3158, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.4837}, {'lati': 78.4345, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.4388}, {'lati': 78.5322, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.4503}, {'lati': 78.5056, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.4515}, {'lati': 78.4529, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.4033}, {'lati': 78.4805, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.6323}, {'lati': 78.3245, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.3807}, {'lati': 78.3428, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.5169}, {'lati': 78.2747, 'type': 'Feature', 'properties': {'mag': 4}, 'longi': 17.3268}, {'lati': 78.4254, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.4665}, {'lati': 78.5164, 'type': 'Feature', 'properties': {'mag': 0}, 'longi': 17.373}, {'lati': 78.5595, 'type': 'Feature', 'properties': {'mag': 0}, 'longi': 17.4308}, {'lati': 78.5066, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.4967}, {'lati': 78.493, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.3986}, {'lati': 78.4646, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.4227}, {'lati': 78.4811, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.4686}, {'lati': 78.5017, 'type': 'Feature', 'properties': {'mag': 3}, 'longi': 17.3991}, {'lati': 78.5287, 'type': 'Feature', 'properties': {'mag': 0}, 'longi': 17.4135}, {'lati': 78.389, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.4178}, {'lati': 78.3963, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.5186}, {'lati': 78.5278, 'type': 'Feature', 'properties': {'mag': 4}, 'longi': 17.3853}, {'lati': 78.4773, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.4471}, {'lati': 78.4933, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.4026}, {'lati': 78.4485, 'type': 'Feature', 'properties': {'mag': 1}, 'longi': 17.4436}, {'lati': 78.5622, 'type': 'Feature', 'properties': {'mag': 5}, 'longi': 17.3339}, {'lati': 78.3786, 'type': 'Feature', 'properties': {'mag': 2}, 'longi': 17.4339}
+
+    ];
+    var map;
+    var directionsDisplay;
+    var directionsService;
+    function initMap(location) {
+      // loading maps services in directionsDisplay and directionsService look of map is terrain
+      directionsService = new google.maps.DirectionsService();
+      directionsDisplay = new google.maps.DirectionsRenderer();
+       var loc = new google.maps.LatLng(location.coords.latitude, location.coords.longitude);
+       //long and lat in loc using predifined location.coords.latitude, location.coords.longitude
+      map = new google.maps.Map(document.getElementById('map'), {
+        mapTypeControl: false,
+        zoom: 7,
+        center: loc,
+        mapTypeId: 'terrain'
+      });
+      
+      var marker = new google.maps.Marker({
+        position: loc,
+        map: map
+      });
+      // A marker identifies a location on a map.
+
+      // directionsDisplay.setMap(map);
+      directionsDisplay.setMap(map);
+      var script = document.createElement('script');
+      //script.src = 'helper.js';
+      document.getElementsByTagName('head')[0].appendChild(script);
+
+      map.data.setStyle(function (feature) {
+        var magnitude = feature.getProperty('mag');
+        console.log(typeof (magnitude));
+        return {
+          icon: getCircle(magnitude)
+        };
+      });
+       new AutocompleteDirectionsHandler(map);// to places suggestions in top doen menu
+    }
+    function getCircle(magnitude) {////source and destination points
+      return {
+        path: google.maps.SymbolPath.CIRCLE,//google.maps.SymbolPath.CIRCLE for rounded markers.
+        fillColor: 'red',
+        fillOpacity: .2,
+        scale: Math.pow(2, magnitude) / 2,
+        strokeColor: 'white',
+        strokeWeight: .5
+      };
+    }
+
+    /**
+     * @constructor
+    */
+
+    function AutocompleteDirectionsHandler(map) {
+      this.map = map;
+      this.originPlaceId = null;
+      this.destinationPlaceId = null;
+      this.travelMode = 'WALKING';
+      var originInput = document.getElementById('origin-input');
+      var destinationInput = document.getElementById('destination-input');
+      var modeSelector = document.getElementById('mode-selector');
+      this.directionsService = new google.maps.DirectionsService;
+      this.directionsDisplay = new google.maps.DirectionsRenderer;
+      this.directionsDisplay.setMap(map);
+
+      var originAutocomplete = new google.maps.places.Autocomplete(
+        originInput, { placeIdOnly: true });
+      var destinationAutocomplete = new google.maps.places.Autocomplete(
+        destinationInput, { placeIdOnly: true });
+      this.setupClickListener('changemode-driving', 'DRIVING');
+      this.setupClickListener('changemode-walking', 'WALKING');
+      this.setupClickListener('changemode-transit', 'TRANSIT');
+      //this.setupClickListener('changemode-driving', 'DRIVING');
+
+      this.setupPlaceChangedListener(originAutocomplete, 'ORIG');
+      this.setupPlaceChangedListener(destinationAutocomplete, 'DEST');
+
+      this.map.controls[google.maps.ControlPosition.TOP_LEFT].push(originInput);
+      this.map.controls[google.maps.ControlPosition.TOP_LEFT].push(destinationInput);
+      this.map.controls[google.maps.ControlPosition.TOP_LEFT].push(modeSelector);
+    }
+
+    // Sets a listener on a radio button to change the filter type on Places
+    // Autocomplete.
+    AutocompleteDirectionsHandler.prototype.setupClickListener = function (id, mode) {
+      var radioButton = document.getElementById(id);
+      var me = this;
+      radioButton.addEventListener('click', function () {
+        me.travelMode = mode;
+        me.route();
+      });
+    };
+
+    AutocompleteDirectionsHandler.prototype.setupPlaceChangedListener = function (autocomplete, mode) {
+      var me = this;
+      autocomplete.bindTo('bounds', this.map);
+      autocomplete.addListener('place_changed', function () {
+        var place = autocomplete.getPlace();
+        if (!place.place_id) {
+          window.alert("Please select an option from the dropdown list.");
+          return;
+        }
+        if (mode === 'ORIG') {
+          me.originPlaceId = place.place_id;
+        } else {
+          me.destinationPlaceId = place.place_id;
+        }
+        me.route();
+      });
+
+    };
+
+    AutocompleteDirectionsHandler.prototype.route = function () {
+      if (!this.originPlaceId || !this.destinationPlaceId) {// if any org or des in null
+        return;
+      }
+      var me = this;
+
+      this.directionsService.route({
+        origin: { 'placeId': this.originPlaceId },
+        destination: { 'placeId': this.destinationPlaceId },
+        travelMode: this.travelMode,
+        provideRouteAlternatives: true,// provide all routes with selected mode from sorce to desti
+        unitSystem: google.maps.UnitSystem.METRIC
+      }, function (response, status) {// function with safety rate images
+        if (status === 'OK') {
+          var image1 = {
+            url: 'https://www.clipartmax.com/png/middle/185-1859575_smiley-face-clipart-cold-sweat-emoji.png',
+            // This marker is 20 pixels wide by 32 pixels high.
+            scaledSize: new google.maps.Size(28, 28),
+            // size: new google.maps.Size(20, 32),
+
+          };
+          var image2 = {
+            url: 'https://image.emojipng.com/749/5749.jpg',
+            // This marker is 20 pixels wide by 32 pixels high.
+            scaledSize: new google.maps.Size(28, 28),
+            // size: new google.maps.Size(20, 32),
+
+          };
+          ;
+          var image3 = {
+            url: 'https://image.emojipng.com/29/29.jpg',
+            // This marker is 20 pixels wide by 32 pixels high.
+            scaledSize: new google.maps.Size(23, 23),
+            // size: new google.maps.Size(20, 32),
+
+          };
+          var image4 = {
+            url: 'https://www.pinclipart.com/picdir/middle/571-5718489_emoji-smiley-emoticon-clip-art-transparent-background-happy.png',
+            // This marker is 20 pixels wide by 32 pixels high.
+            scaledSize: new google.maps.Size(23, 23),
+            // size: new google.maps.Size(20, 32),
+
+          };
+          var image5 = {
+            url: 'https://image.pngaaa.com/205/189205-middle.png',
+            // This marker is 20 pixels wide by 32 pixels high.
+            scaledSize: new google.maps.Size(23, 23),
+            // size: new google.maps.Size(20, 32),
+
+          };
+          color = ["yellow", "orange", "brown", "red", "mustard-yellow"];
+          //me.directionsDisplay.setDirections(response);
+          console.log(response.routes.length);
+          var dindex = [];
+          for (var k = 0, len = response.routes.length; k < len; k++) {
+            dindex[k] = 0;
+            var points = response.routes[k].overview_path;
+            //console.log("yayyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy");
+            //console.log(points.length);
+            new google.maps.DirectionsRenderer({
+              map: map,
+              directions: response,
+              routeIndex: k,
+              unitSystem: google.maps.UnitSystem.METRIC,
+              provideRouteAlternatives: true,
+              polylineOptions: {
+                strokeColor: color[k],
+                strokeOpacity: 0.7,
+                strokeWeight: 10
+
+              }
+
+            });
+            //console.log(points);
+            //console.log(data);
+            var infoWindow = new google.maps.InfoWindow;
+            var posInit;
+            var count = 0;
+            for (var j = 0; j < points.length; j++) {
+              for (var i = 0; i < data.length; i++) {
+
+                var st1 = data[i].lati.toString();
+                st1 = st1.slice(0, (st1.indexOf(".")) + 3);
+                var st3 = data[i].longi.toString();
+                st3 = st3.slice(0, (st3.indexOf(".")) + 3);
+                var st2 = points[j].lng().toString();
+                st2 = st2.slice(0, (st2.indexOf(".")) + 3);
+                var st4 = points[j].lat().toString();
+                st4 = st4.slice(0, (st4.indexOf(".")) + 3);
+
+                if ((st1 === st2) && (st3 === st4)) {
+                  count++;
+                  posInit = new google.maps.LatLng(data[i].longi, data[i].lati);
+
+                  if (data[i].properties.mag == 4) {
+                    var marker = new google.maps.Marker({
+                      position: new google.maps.LatLng(data[i].longi, data[i].lati),
+                      icon: image1,
+                      map: map
+                    });
+                    dindex[k] += 4;
+                  }
+                  else if (data[i].properties.mag == 3) {
+                    var marker = new google.maps.Marker({
+                      position: new google.maps.LatLng(data[i].longi, data[i].lati),
+                      icon: image2,
+                      map: map
+                    }); dindex[k] += 3;
+                  }
+                  else if (data[i].properties.mag == 2) {
+                    var marker = new google.maps.Marker({
+                      position: new google.maps.LatLng(data[i].longi, data[i].lati),
+                      icon: image3,
+                      map: map
+                    }); dindex[k] += 2;
+                  }
+                  else if (data[i].properties.mag == 1) {
+                    var marker = new google.maps.Marker({
+                      position: new google.maps.LatLng(data[i].longi, data[i].lati),
+                      icon: image4,
+                      map: map
+                    }); dindex[k] += 1;
+                  }
+                  else if (data[i].properties.mag == 0) {
+                    var marker = new google.maps.Marker({
+                      position: new google.maps.LatLng(data[i].longi, data[i].lati),
+                      icon: image5,
+                      map: map
+                    });
+                  }
+
+                }
+              }
+
+            }
+
+
+            dindex[k] /= count;
+            var div = document.createElement('div');
+            div.className = "ui main container segment"
+            document.body.appendChild(div);
+            var colour = "color" + k,
+              duration = "duration" + k,
+              distance = "distance" + k,
+              safetyi = "safetyi" + k;
+            div.innerHTML = '<ul class="msg"><li id=' + colour + '></li><li id=' + duration + '></li><li id=' + distance + '></li><li id=' + safetyi + '></li></ul>';
+            document.getElementById(colour).innerHTML = "Route Number:  " + k + " is colored " +
+              (color[k]);
+            document.getElementById(distance).innerHTML = "Distance  : " +
+              (response.routes[k].legs[0].distance.text);
+            //console.log((response.routes[i].legs[0].distance.value) / 1000 + "killo meters");
+            // Display the duration:
+            document.getElementById(duration).innerHTML = "Time duration for reaching : " +
+              response.routes[k].legs[0].duration.text;
+            console.log(response.routes[k].legs[0]);
+            infoWindow.setPosition(posInit);
+            var message = 'How dangerous it is on a scale of 0  to 5? :' + dindex[k];
+            document.getElementById(safetyi).innerHTML = message;
+            var dis = 'Route :' + k;
+
+            //infoWindow.setContent(dis);
+            //       infoWindow.open(map);
+
+
+          }
+
+          var routes = response.routes;
+          for (var j = 0; j < routes.length; j++) {
+            var points = routes[j].overview_path;
+
+
+          }
+
+
+        } else {
+          window.alert('Directions request failed due to ' + status);
+        }
+      });
+    };
+
+    $(document).ready(function () {
+      navigator.geolocation.getCurrentPosition(initMap);
+    });
+  </script>
+  <script src="public/js/index.js"></script>
+  <script src="public/js/location.js"></script>
+</body>
+
+</html>
